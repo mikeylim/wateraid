@@ -129,6 +129,57 @@ Combine `main` (teammate's backend + proposal review, through `f6b342c`) with th
   - Live checks are listed in the commit and PR.
 - **Setup note:** the root `.venv` needs `python-multipart==0.0.32` (added in #8). Run the backend from `backend/`.
 
+## Product renamed to GrantProof (working name) (Claude), branch `feat/rename-grantproof`
+- **Why:** "GrantGuard" was retired because grantguard.ai is an existing product of the same kind. "GrantProof" is provisional, and the team may rename again later.
+- **One place for the name:** `frontend/src/product.ts` (`APP_NAME`, `APP_TAGLINE`, `APP_DESCRIPTION`).
+  - The landing page, Projects header, dashboard sidebar and screen-reader labels read it.
+  - `index.html` gets the title and description at build time through a small plugin in `frontend/vite.config.ts`.
+  - The file is not `brand.ts`, because macOS's case-insensitive file system made it collide with `Brand.tsx`.
+- **New mark:** a page with a folded corner and a check (`frontend/src/Brand.tsx`), replacing the water droplet now that the product isn't water-specific. The favicon was redrawn on `--button` `#20242b`, which also fixes the old teal favicon noted in BRAND.md.
+- **Docs updated:** `docs/BRAND.md` (logo section and name status), `AGENTS.md`, `docs/AI_CONTEXT.md` and `frontend/README.md`. The frontend package name is now `grantproof-frontend`.
+- **Kept on purpose:** the `grantguard.*` localStorage keys, the `grantguard.project-documents.v1` IndexedDB name and the `application/x-grantguard-*` drag types. Renaming them would orphan saved drafts, reviews, projects and theme choices; change them only together with a migration.
+- **To rename again:** edit `product.ts`, then the docs listed above. If the new name needs a different mark, replace `Brand.tsx` and `public/favicon.svg`.
+- **Verified:**
+  - `npm run build` passes; `dist/index.html` has the title "GrantProof · Evidence-first grant workspace".
+  - Playwright (Chrome): landing, Projects and sidebar show GrantProof, and the mark renders in light and dark.
+  - No console errors.
+
+## Workspace cleanup (Claude), branch `feat/workspace-cleanup`
+- **Projects:**
+  - Rename and delete are available from the sidebar project menu and from each card on the Projects page.
+  - New routes: `PATCH /projects/{id}` (display name only; 1–120 characters, whitespace collapsed) and `DELETE /projects/{id}` (cancels ingestion and removes `data/projects/<id>`).
+  - `Workspace.delete` refuses `.`/`..` and any path that isn't directly under the projects folder.
+  - The rename dialog reuses `NewProjectDialog` (`initialName`). Delete uses the shared `confirmProjectDelete` text.
+- **Sidebar:**
+  - Fits at 1280×720 and scrolls when shorter (`frontend/src/sidebar.css`).
+  - Workspaces is a slim secondary link, and the project card has tighter margins.
+  - The footer is one "Case date" line, hidden in the collapsed rail.
+- **Menu (9 items to 7, grouped):** Overview; Write (Proposal draft, Proposal review); Evidence (Project documents, Evidence workspace); Track (Issues, Reporting calendar).
+  - **Obligations** removed from the menu: `/obligations` renders the calendar, and undated obligations are listed below it. `/obligations` is still a backend stub.
+  - **Review history** is the Decisions tab of Issues (`/reviews`).
+  - Issues now merges compliance findings with proposal-check findings (labelled), so proposal findings can be decided. The nav badge counts undecided issues.
+- **Overview:** the first card is Start/Continue the proposal draft, showing page and word counts from the browser draft.
+- **Reporting calendar:**
+  - Opens on the case date.
+  - "Next due" means strictly after the case date. Case date and Next due buttons are disabled when already selected and scroll the details into view on narrow screens.
+  - The upcoming list appears on dates with nothing due.
+  - Month navigation is bounded to the schedule.
+  - The date box is uncontrolled, so typing is never interrupted; partial or out-of-range dates are ignored and reset on blur.
+  - Past items say "Was due N days before the case date". The legend shows a "1" pill and a "30" day cell instead of checkbox-like squares.
+- **Also:**
+  - The `--danger`/`--danger-soft` tokens from BRAND.md are now built and used for delete actions.
+  - The Makefile's `make up` now uses `exec`, so a piped `make up` (for example `| tail`) no longer hangs.
+- **Verified:**
+  - `pytest -q`: **201 passed**, including rename/delete API tests, restart persistence and a direct traversal test.
+  - `npm run build` passes.
+  - Playwright (Chrome), on a temporary project only:
+    - Rename persists after reload. Delete removes the folder and the API entry.
+    - Grouped nav, plus `/reviews` and `/obligations` redirects with the correct active item and crumb.
+    - Issues tabs; Overview card in both states.
+    - Sidebar fits at 1440×900, 1366×768, 1280×720 and 1280×600.
+    - Calendar buttons, bounds, typing and legend.
+    - All sections in light and dark, the collapsed rail, 0 px mobile overflow, no console errors.
+
 ## Open issues (Claude)
 
 - **Backend, for the proposal owner:** "Cost Share Vs Call" failed in all 3 full runs (`tools/proposal/evidence.py` `cited_percentage` rejects quotes with zero or several percentages); the checklist failed once with "Response must be a finite JSON object"; checklist row count varies (14 vs 16). Every `/proposal/ask` is stored as a proposal finding, so writing-help requests appear as "Generic Qa" priority findings.
