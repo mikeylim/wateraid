@@ -1,0 +1,45 @@
+# Keeps this fork in step with the team repo (M-harib/wateraid).
+# - main: upstream main is merged in, so commits made here (and this file) are kept.
+#   A merge conflict fails the run; resolve it locally and push.
+# - every other branch: copied exactly from upstream.
+# This file exists only in the fork; do not include it in PRs to the team repo.
+name: Sync from upstream
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # hourly, off the top of the hour
+  workflow_dispatch:       # "Run workflow" button in the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/M-harib/wateraid.git
+          git fetch upstream --prune
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge upstream main into main
+        run: |
+          git merge --no-edit upstream/main
+          git push origin HEAD:main
+
+      - name: Mirror the other upstream branches
+        run: |
+          for b in $(git for-each-ref --format='%(refname:strip=3)' refs/remotes/upstream | grep -vE '^(HEAD|main)$'); do
+            git push --force origin "refs/remotes/upstream/$b:refs/heads/$b"
+          done
